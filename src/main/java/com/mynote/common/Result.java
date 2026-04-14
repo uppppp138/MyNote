@@ -23,23 +23,27 @@ public class Result<T> {
     }
     
     public static <T> Result<T> success() {
-
-//        return success(null);
         return Result.<T>builder()
                 .code(200)
                 .message("操作成功")
                 .build();
     }
+    public static <T> Result<T> success(String message) {
+        return Result.<T>builder()
+                .code(200)
+                .message(message)
+                .build();
+    }
     
     public static <T> Result<T> error(Integer code,String message) {
         return Result.<T>builder()
-                .code(500)
+                .code(code)
                 .message(message)
                 .build();
     }
     public static <T> Result<T> error(String message) {
         return Result.<T>builder()
-                .code(200)
+                .code(500)
                 .message(message)
                 .build();
     }

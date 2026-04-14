@@ -1,5 +1,6 @@
 package com.mynote.interceptors;
 
+import com.mynote.common.BusinessException;
 import com.mynote.util.JwtUtil;
 import com.mynote.util.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,9 +32,7 @@ public class UserInfoInterceptor implements HandlerInterceptor {
             return true;  // 解析成功，放行
         } catch (Exception e) {
             // token过期或无效
-            response.setStatus(401);
-            response.getWriter().write("登录已过期，请重新登录");
-            return false;  //解析失败，不放行
+            throw new BusinessException(404, "token无效或已过期");
         }
 
     }

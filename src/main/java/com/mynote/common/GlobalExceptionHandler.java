@@ -9,6 +9,6 @@ public class GlobalExceptionHandler {
     
     @ExceptionHandler(BusinessException.class)
     public Result handleBusinessException(BusinessException e) {
-        return Result.error(e.getCode(),e.getMessage());  // ← 这里返回给前端
+        return Result.error(e.getCode(), e.getMessage());  // ← 这里返回给前端
     }
 }

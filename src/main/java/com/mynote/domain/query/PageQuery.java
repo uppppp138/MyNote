@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Min;
 
 @Data
 @Schema(description = "分页查询条件")
-@Accessors(chain = true)
+@Accessors(chain = true)//支持链式调用
 public class PageQuery {
     public static final Integer DEFAULT_PAGE_SIZE = 20;
     public static final Integer DEFAULT_PAGE_NUM = 1;
