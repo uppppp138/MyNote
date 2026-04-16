@@ -1,15 +1,12 @@
 package com.mynote.service.impl;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.itextpdf.html2pdf.HtmlConverter;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
 import com.mynote.common.BusinessException;
 import com.mynote.common.RedisKey;
 import com.mynote.domain.dto.NoteDTO;
@@ -25,7 +22,10 @@ import com.mynote.mapper.NoteMapper;
 import com.mynote.service.CategoryService;
 import com.mynote.service.NoteService;
 import com.mynote.util.CollUtils;
+import com.mynote.util.MarkdownUtils;
+import com.mynote.util.PdfFontUtils;
 import com.mynote.util.UserContext;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -33,6 +33,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -181,11 +184,11 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         }
         //2.更新笔记view_count+1——数据库更新
         /**note.setViewCount(note.getViewCount() + 1);
-        Note newNote = note.builder()
-                .id(note.getId())
-                .viewCount(note.getViewCount())
-                .build();
-        noteMapper.updateById(newNote);*/
+         Note newNote = note.builder()
+         .id(note.getId())
+         .viewCount(note.getViewCount())
+         .build();
+         noteMapper.updateById(newNote);*/
         //2.1更新redis中的key对应的count
         String key = RedisKey.USER_NOTE_VIEW_COUNT_PREFIX + id;
         Long newCount = redisTemplate.opsForValue().increment(key);//如果redis中没有key,会自动添加并返回初始值0
@@ -442,6 +445,40 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
                 .build());
 
     }
+
+    @Override
+    public void exportPdf(Long noteId, Long userId, HttpServletResponse response) throws IOException {
+        // 1. 获取笔记并校验权限
+        Note note = getDetailById(noteId);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+        if (!note.getUserId().equals(userId)) {
+            throw new BusinessException("无权限导出该笔记");
+        }
+
+        // 2. Markdown 转 HTML
+        String htmlContent = MarkdownUtils.markdownToHtml(note.getContent(), note.getTitle());
+
+        // 3. 设置响应头
+        String fileName = note.getTitle() + ".pdf";
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
+
+        response.setContentType("application/pdf");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-Disposition",
+                "attachment; filename*=UTF-8''" + encodedFileName);
+
+        // 4. 生成 PDF 并写入响应流
+        try (PdfWriter writer = new PdfWriter(response.getOutputStream());
+             PdfDocument pdfDoc = new PdfDocument(writer)) {
+
+            // 配置中文字体支持 [citation:1]
+            HtmlConverter.convertToPdf(htmlContent, pdfDoc,
+                    PdfFontUtils.getConverterProperties());
+        }
+    }
     private Integer getNextVersion(Long noteId) {
         Integer maxVersion = noteHistoryMapper.selectMaxVersion(noteId);
         return (maxVersion == null) ? 1 : maxVersion + 1;
@@ -463,6 +500,8 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         BeanUtils.copyProperties(note, vo);
         return vo;
     }
-
-
 }
+
+
+
+

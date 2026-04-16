@@ -1,6 +1,7 @@
 package com.mynote.controller;
 
 import com.mynote.annotation.Log;
+import com.mynote.common.BusinessException;
 import com.mynote.common.Result;
 import com.mynote.domain.dto.NoteDTO;
 import com.mynote.domain.dto.PageDTO;
@@ -13,12 +14,12 @@ import com.mynote.service.NoteService;
 import com.mynote.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.Getter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.List;
 
 @Tag(name = "笔记管理")
@@ -180,5 +181,40 @@ public class NoteController {
     public Result rollback(@PathVariable Long id, @PathVariable Integer version) {
         noteService.rollback(id, version);
         return Result.success("回滚成功");
+    }
+
+    /**
+     * 导出笔记为markdown
+     */
+    @GetMapping("/export/markdown/{id}")
+    @Operation(summary = "导出笔记为markdown")
+    @Log("导出笔记为markdown")
+    public void exportMarkDown(@PathVariable Long id, HttpServletResponse response) throws Exception {
+        //1.获取笔记内容
+        Note note = noteService.getDetailById(id);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+        //2.构建文件名
+        String fileName = note.getTitle() + ".md";
+        String encodingFileName = URLEncoder.encode(fileName, "UTF-8").replaceAll("\\+", "%20");
+
+        //3.设置响应头
+        response.setContentType("text/markdown; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodingFileName);
+        //4.设置文件大小，方便浏览器显示下载进度
+        byte[] contentBytes = note.getContent().getBytes("UTF-8");
+        response.setContentLength(contentBytes.length);
+        //5.输出内容
+        response.getWriter().write(note.getContent());
+        response.getWriter().flush();
+    }
+    @GetMapping("/pdf/{id}")
+    @Operation(summary = "导出笔记为PDF")
+    @Log("导出笔记为PDF")
+    public void exportPdf(@PathVariable Long id,
+                          HttpServletResponse response) throws IOException {
+        Long userId = UserContext.getUser();
+        noteService.exportPdf(id, userId, response);
     }
 }

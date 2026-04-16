@@ -9,6 +9,7 @@ import com.mynote.domain.po.OperationLog;
 import com.mynote.mapper.OperationLogMapper;
 import com.mynote.util.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -18,6 +19,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -114,14 +116,27 @@ public class OperationLogAspect {
         }
         StringBuilder sb = new StringBuilder();
         for (Object arg : args) {
-            if (arg != null && !(arg instanceof HttpServletRequest)) {
+            // ✅ 过滤掉无法序列化的对象
+            if (arg == null) {
+                continue;
+            }
+            if (arg instanceof HttpServletRequest ||
+                    arg instanceof HttpServletResponse ||
+                    arg instanceof MultipartFile) {
+                continue;
+            }
+
+            try {
                 String json = JSONUtil.toJsonStr(arg);
                 if (StrUtil.isNotBlank(json)) {
                     json = json.replaceAll("(?<=\"password\":\")(.*?)(?=\")", "******");
                     json = json.replaceAll("(?<=\"oldPassword\":\")(.*?)(?=\")", "******");
                     json = json.replaceAll("(?<=\"newPassword\":\")(.*?)(?=\")", "******");
+                    sb.append(json);
                 }
-                sb.append(json);
+            } catch (Exception e) {
+                // 序列化失败时跳过该参数
+                log.debug("参数序列化失败: {}", e.getMessage());
             }
         }
         String result = sb.toString();

@@ -23,7 +23,8 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/v3/api-docs",      // OpenAPI3 是 v3
                         "/v3/api-docs/**",
                         "/swagger-resources/**",
-                        "/webjars/**"
+                        "/webjars/**",
+                        "/note-share/noValid/**"//通过分享链接访问笔记不进行拦截
                 );
     }
 }

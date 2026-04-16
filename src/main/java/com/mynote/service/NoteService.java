@@ -7,7 +7,9 @@ import com.mynote.domain.po.Note;
 import com.mynote.domain.query.NotePageQuery;
 import com.mynote.domain.vo.NoteHistoryVO;
 import com.mynote.domain.vo.NoteVO;
+import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface NoteService extends IService<Note> {
@@ -38,4 +40,6 @@ public interface NoteService extends IService<Note> {
     List<NoteHistoryVO> getHistory(Long id);
 
     void rollback(Long id, Integer version);
+
+    void exportPdf(Long id, Long userId, HttpServletResponse response) throws IOException;
 }
